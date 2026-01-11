@@ -3,8 +3,8 @@
 A real-time polling application built with React, Node.js, Socket.io, and MongoDB. It features a resilient architecture that handles state recovery and race conditions.
 
 ### 🚀 Live Links
-- **Frontend (Student & Teacher):** [Paste your Netlify Link Here]
-- **Backend API:** [Paste your Render Link Here]
+- **Frontend (Student & Teacher):** https://fluffy-dieffenbachia-0ec496.netlify.app/
+- **Backend API:** https://poll-backend-app.onrender.com/
 
 ### ✨ Key Features
 - **Resilient State Recovery:** Users can refresh the browser without losing poll state.
