@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 
-// ✅ FIX: Define the shape explicitly to resolve red squiggly lines
 export type PollOption = {
   id: string;
   text: string;
@@ -14,14 +13,18 @@ export type Poll = {
   question: string;
   options: PollOption[];
   status: 'active' | 'ended';
-  remainingTime: number;         // Fixes "Property remainingTime does not exist"
-  userVotedOptionId?: string | null; // Fixes "Property userVotedOptionId does not exist"
+  remainingTime: number;
+  userVotedOptionId?: string | null;
 };
 
-// Singleton socket
-const socket: Socket = io("http://localhost:5000", {
+// 🔴 FIX START: Define API_URL dynamically based on environment
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
+// Use API_URL instead of hardcoded string
+const socket: Socket = io(API_URL, {
   autoConnect: false,
 });
+// 🔴 FIX END
 
 export const useStudentPoll = (studentName: string) => {
   const [poll, setPoll] = useState<Poll | null>(null);
@@ -30,17 +33,13 @@ export const useStudentPoll = (studentName: string) => {
   useEffect(() => {
     if (!studentName) return;
 
-    // Connect with auth data
     socket.auth = { name: studentName };
     socket.connect();
     setIsConnected(true);
 
-    // ✅ RESILIENCE: Immediately ask backend for current state
-    // "I just joined/refreshed. What is happening?"
-    console.log("Student connecting, requesting state...");
+    console.log("Student connecting, requesting state from:", API_URL);
     socket.emit("get_current_state", { studentName });
 
-    // Listeners
     socket.on("sync_state", (data: { poll: Poll | null }) => {
       console.log("Synced state:", data);
       if (data.poll) setPoll(data.poll);
@@ -52,7 +51,6 @@ export const useStudentPoll = (studentName: string) => {
     });
 
     socket.on("poll_updated", (updatedPoll: Poll) => {
-      // ✅ TIMER SYNC: The backend sends the correct 'remainingTime' here
       setPoll(updatedPoll);
     });
 
@@ -72,7 +70,6 @@ export const useStudentPoll = (studentName: string) => {
   const submitVote = useCallback((optionId: string) => {
     if (!poll) return;
     
-    // Optimistic UI Update (makes it feel instant)
     setPoll(prev => prev ? { ...prev, userVotedOptionId: optionId } : null);
     
     socket.emit("submit_vote", { 

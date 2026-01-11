@@ -14,15 +14,19 @@ export type Poll = {
   question: string; 
   options: PollOption[]; 
   duration: number; 
-  remainingTime: number; // Critical for sync
+  remainingTime: number; 
   status: 'active' | 'ended';
 };
 
-// Singleton socket connection to prevent multiple connections
-const socket: Socket = io("http://localhost:5000", {
+// 🔴 FIX START: Define API_URL dynamically based on environment
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
+// Use API_URL instead of hardcoded string
+const socket: Socket = io(API_URL, {
   autoConnect: false,
   reconnection: true,
 });
+// 🔴 FIX END
 
 export const useTeacherPoll = () => {
   const [activePoll, setActivePoll] = useState<Poll | null>(null);
@@ -36,8 +40,7 @@ export const useTeacherPoll = () => {
       setIsConnected(true);
       setSocketId(socket.id || "");
       
-      // ✅ RESILIENCE: Immediately ask backend for current state on refresh/connect
-      console.log("Connected. Requesting state sync...");
+      console.log("Connected to", API_URL, "- Requesting state sync...");
       socket.emit("get_current_state");
     }
 
@@ -45,7 +48,6 @@ export const useTeacherPoll = () => {
       setIsConnected(false);
     }
 
-    // ✅ RESILIENCE: Handle the state sent back from server
     function onSyncState(state: { poll: Poll | null }) {
       console.log("State synced:", state);
       if (state.poll) {
@@ -58,7 +60,6 @@ export const useTeacherPoll = () => {
     }
 
     function onPollUpdated(updatedPoll: Poll) {
-      // This handles real-time vote updates AND timer updates
       setActivePoll(updatedPoll);
     }
 
@@ -70,7 +71,7 @@ export const useTeacherPoll = () => {
     socket.on("disconnect", onDisconnect);
     socket.on("sync_state", onSyncState);
     socket.on("poll_started", onPollStarted);
-    socket.on("poll_updated", onPollUpdated); // Updates votes & timer
+    socket.on("poll_updated", onPollUpdated);
     socket.on("poll_ended", onPollEnded);
 
     return () => {
@@ -84,7 +85,6 @@ export const useTeacherPoll = () => {
     };
   }, []);
 
-  // ✅ SEPARATION OF CONCERNS: Logic is here, not in UI
   const createPoll = useCallback((question: string, options: string[], duration: number) => {
     if (!question.trim()) return alert("Please enter a question");
     if (options.some(opt => !opt.trim())) return alert("Please fill all options");
@@ -97,7 +97,6 @@ export const useTeacherPoll = () => {
   }, []);
 
   const resetPoll = useCallback(() => {
-    // Ideally, tell server to clear state if needed, or just clear local
     setActivePoll(null);
   }, []);
 
